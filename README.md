@@ -1,5 +1,6 @@
 # eYRC2016_LM438
 This repository contains our codes used for the eYantra Robotics Competition, 
+
 Theme: Launch a Module | Team ID: eYRC-LM#438 | First prize winner at National Level e-Yantra Robotics Competition 2016-17 conducted by e-Yantra, CSE Department, IIT Bombay, sponsored by MHRD, Government of India.
 
 The goal was to deposit the correct objects(foam cubes) to their respective matches(stickers place on the left having identical colour, shape, size) using a Firebird V robot while avoiding obstacles (large red squares). The only feedback that the robot has, is through the motor encoders and commands received from the computer. 
