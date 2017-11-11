@@ -4,7 +4,7 @@ Theme: Launch a Module | Team ID: eYRC-LM#438 | First prize winner at National L
 
 The goal was to deposit the correct objects(foam cubes) to their respective matches(stickers place on the left having identical colour, shape, size) using a Firebird V robot while avoiding obstacles (large red squares). The only feedback that the robot has, is through the motor encoders and commands received from the computer. 
 
-The computer is running a python program which constantly processes frames from an overhead camera to first find the optimal solution and then sends commands to the robot using XBee modules (like pickup, move, turn, etc). As the robot moves, it makes movement errors which are detected using the pink strips on the robot and commands are sent to make tiny corrections and keep it from straying away.
+The computer is running a python program which constantly processes frames from an overhead camera to first find the optimal solution and then sends commands to the robot using XBee modules (like pickup, move, turn, etc). As the robot moves, it makes movement errors which are detected using the pink strips on the robot and commands are sent to make tiny corrections and keep it from straying away(and boy did it stray!).
 
 We have also designed a modified system which could carry 3 objects at a time, but because of some software issues found right before the finals, we ended up not using it for the final round. 
 
@@ -12,6 +12,7 @@ Huge thanks to e-yantra for conducting this competition every year and providing
 
 ## Video Demonstration
 [Pre Finals Demonstration Video](https://www.youtube.com/watch?v=5FSh1IrSGKg)
+
 [Three block setup Video](https://www.youtube.com/watch?v=Qtwek7J2ddI)
 
 ## Flowchart
