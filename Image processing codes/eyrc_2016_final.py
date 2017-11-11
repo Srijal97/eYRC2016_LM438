@@ -11,8 +11,12 @@ import copy
 * Authors: Srijal Poojari, Aditya Nair
 * Filename: task5-main.py
 * Theme: eYRC-Launch a Module, 2016
-* Description:
-* Date: 22-03-2017/10:30AM
+* Description: This python program constantly processes frames from an overhead camera
+*              and first finds the optimal solution for any given configuration and then
+*              sends commands to the robot using XBee modules(like pickup, move, turn, etc).
+*              As the robot moves, it makes movement errors which are detected using the
+*              pink strips on the robot and commands are sent to make tiny corrections and
+*              keep it from straying away.
 '''
 
 '''
@@ -55,7 +59,19 @@ port = "COM4"
 baud = 9600
 ser = serial.Serial(port,baud,timeout=None)
 
+# If reposition taken during run, the already deposited objects have to be ignored.
+# The idea was to save the deposited locations in the text file as well and read
+# it during the run. This has not been implemented in this program.
 enable_reposition = False
+
+door_reposition_vals = {
+    0: 0,
+    10: 0,
+    20: 0,
+    30: 0,
+    40: 0,
+    50: 0
+}
 
 # Get calibrated values from text file
 values_file = open('values.txt', 'r+')
@@ -67,15 +83,6 @@ for line in values_file:  # Read existing values
         values[content[0]] = int(content[1])
 
 values_file.close()
-
-door_reposition_vals = {
-    0: 0,
-    10: 0,
-    20: 0,
-    30: 0,
-    40: 0,
-    50: 0
-}
 
 # print values
 if values['reposition'] == 1 and enable_reposition:
@@ -456,7 +463,6 @@ def modified_a_star_search(start_node, goal_node, traversable_nodes, current_dir
         cost = f_cost[goal_node]
         cost += turn_cost_180
         f_cost[goal_node] = cost
-
 
     # Remove the extra 'forward' at the end of path
     elif directions[-1] == 'left-forward':
@@ -871,12 +877,9 @@ def mask_in_thresh(type, (cy, cx), thresh):
 * Function Name: get_paths()
 * Input: (dictionary of matches)
 * Output: array(list) of paths for each match
-* Logic: Based on the number of matches the marker has, it calculates paths using modified_a_star_search()
-*        by taking parameters from the various lists, and stores the least expensive paths in a list(path_array)
-*        -------------------------------------------------------------------------------------------------------
-*        A better logic would be to find all possible combinations of complete task solution which
-*        would be  at most 6! = 720 possible solutions and find take the total least expensive (This actually occurred
-*        to me a few days back, we'll definitely implement this next)
+* Logic: To find all possible combinations of complete task solution and
+*        take the net least expensive path. Uses recursion to take different
+*        branches for different objects.
 * Example Call: get_paths(matches)
 '''
 def get_paths(matches_list, path_till_now, bot_location, bot_face, depth, rem_markers):
@@ -1712,6 +1715,14 @@ def get_deviation_direction(left_center, right_center, bot_face):
     return left_correct_req, right_correct_req
 # -------------------------------------------------------------------#
 
+'''
+* Function Name: set_timeout()
+* Input: (timeout_value)
+* Output: The timeout value to be checked while sending the characters to the Firebird V.
+* Logic: The amount of expected time(in secs) which is taken by the Firebird V to move a
+*        distance of 1-9 cells in the arena is added.
+* Example Call: set_timeout(5)
+'''
 def set_timeout(param):
     timeout_values = {
         1: 4,
@@ -1725,7 +1736,7 @@ def set_timeout(param):
         9: 12,
     }
 
-    current_time  = time.clock()
+    current_time = time.clock()
 
     return current_time + timeout_values[param]
 # -------------------------------------------------------------------#
@@ -1794,8 +1805,6 @@ def send_command(command, param, face):
             Here 'forward' and 'reverse' sections a highly unoptimized in the sense that it directly uses
             tons of If-Else statements. This happened because I was just copy-pasting and changing values for quick
             results. So warning! Keep blocks folded to save scrolling!
-            It can and will be made shorter and easier to read/debug by using functions for common corrections
-            which are repeatedly used even in other commands.
         '''
         if face == 'N':
 
@@ -2071,8 +2080,6 @@ def send_command(command, param, face):
             Here 'forward' and 'reverse' sections a highly unoptimized in the sense that it directly uses
             tons of If-Else statements. This happened because I was just copy-pasting and changing values for quick
             results.
-            It can and will be made shorter and easier to read/debug by using functions for common corrections
-            which are repeatedly used even in other commands.
         '''
         if face == 'N':
             final_center_y = arena_centers_y[bot_cords[1] - 1 + param]
@@ -3106,6 +3113,17 @@ def await_response(timeout_at):
     return received
 # -------------------------------------------------------------------#
 
+'''
+* Function Name: turn_decider_180()
+* Input: (facing_direction, location_as_node_number)
+* Output: required turn to be taken
+* Logic: A 180 degree turn could be taken from either the left or right sides.
+*        So as to avoid collision with obstacles, it would be better if the
+*        robot turns in the direction which has an empty cell, rather than an
+*        obstacle. Various conditions are taken into picture and the best turn
+*        is decided.
+* Example Call: turn_decider_180('N', 35)
+'''
 def turn_decider_180(face, location):
     turn_180_decider = {
         'N00': 'turn-180-left',
@@ -3187,7 +3205,15 @@ def turn_decider_180(face, location):
         return turn_180_decider[face + left_val + right_val]
 # -------------------------------------------------------------------#
 
-
+'''
+* Function Name: process_image()
+* Input: (number_of_frames, camera_object)
+* Output: Number of times the result has occured out of the total frames, list of empty nodes.
+* Logic: Applies various image processing techniques to identify all the objects and obstacles.
+*        This is done for multiple frames and the result occuring the maximum number of times is
+*        taken.
+* Example Call: process_image(30, camera_object)
+'''
 def process_image(rep_count, cap):
     '''
     Now, we perform shape, color and location detection of objects and color markers
@@ -3205,9 +3231,6 @@ def process_image(rep_count, cap):
         global boundary_pts
 
         img_raw = get_image(cap)
-
-        # cv2.imshow('raw', img_raw)
-
         ret_val, img, pts = get_boundary_img(img_raw)
 
         if ret_val == -1:
@@ -3220,12 +3243,7 @@ def process_image(rep_count, cap):
         boundary_pts = pts  # Store the boundary points to be used during bot position/orientation detection
 
         img = cv2.bilateralFilter(img, 15, 75, 75)  # Bilateral filter to blur while maintaining edges
-        # cv2.imshow('img', img)
-
         no_bgrnd = remove_background(img)  # Function to remove white background
-
-        # cv2.imshow('rem', no_bgrnd)
-
         no_bgrnd_gray = cv2.cvtColor(no_bgrnd, cv2.COLOR_BGR2GRAY)
 
         ret1, no_bgrnd_thresh = cv2.threshold(no_bgrnd_gray, 10, 255, cv2.THRESH_BINARY)
@@ -3325,10 +3343,6 @@ def process_image(rep_count, cap):
         mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
         mask_green = cv2.inRange(hsv, lower_green, upper_green)
 
-        # cv2.imshow('mask_red', mask_red)
-        # cv2.imshow('mask_blue', mask_blue)
-        # cv2.imshow('mask_green', mask_green)
-
         blue_contours, blue_hierarchy = cv2.findContours(mask_blue, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         green_contours, green_hierarchy = cv2.findContours(mask_green, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -3402,13 +3416,6 @@ def process_image(rep_count, cap):
                         else:
                             matches[marker[0]] = [object[0]]
 
-        # print "*******************************************************************************************"
-        # print "Door markers: " + str(door_area_list)
-        # print "Objects: " + str(object_list)
-        # print "Obstacles: " + str(obstacle_list)
-        # print "Matches: " + str(matches)
-        # print "*******************************************************************************************"
-
         # --------------------------------------------------------------------------------------- #
         cv2.imshow('no_bgrnd', no_bgrnd)
 
@@ -3475,59 +3482,6 @@ cap = cv2.VideoCapture(camera_port) # Create camera object for camera
 for i in range(0, 10):  # discard the first 10 frames while camera adjusts to light conditions
     discard_frame = get_image(cap)
 
-
-# max_count, trav_node = process_image(5, cap)
-# del object_list[:]
-# del door_area_list[:]
-# del obstacle_list[:]
-# matches.clear()
-#
-# if 23 in trav_node:
-#     command_xbee(command_dict['forward1'])
-#     res = await_response(4)
-#     bot_location = 23
-#     time.sleep(0.05)
-#     command_xbee(command_dict['open-front-jaws'])
-#     max_count, travesable_nodes = process_image(20, cap)
-#     command_xbee(command_dict['close-front-jaws'])
-# elif 14 in trav_node:
-#     send_command('left', 1, bot_face)
-#     bot_face = 'S'
-#     time.sleep(0.05)
-#     command_xbee(command_dict['open-front-jaws'])
-#     max_count, travesable_nodes = process_image(20, cap)
-#     command_xbee(command_dict['close-front-jaws'])
-# elif 34 in trav_node:
-#     send_command('right', 1, bot_face)
-#     bot_face = 'N'
-#     time.sleep(0.05)
-#     command_xbee(command_dict['open-front-jaws'])
-#     max_count, travesable_nodes = process_image(20, cap)
-#     command_xbee(command_dict['close-front-jaws'])
-# else:
-#     send_command('turn-180', 1, bot_face)
-#     bot_face = 'E'
-#     time.sleep(0.05)
-#     command_xbee(command_dict['open-front-jaws'])
-#     max_count, travesable_nodes = process_image(5, cap)
-#     command_xbee(command_dict['close-front-jaws'])
-#     del object_list[:]
-#     del door_area_list[:]
-#     del obstacle_list[:]
-#     matches.clear()
-#
-#     if 25 not in trav_node:
-#         sound_buzzer()
-#     else:
-#         send_command('forward', 1, bot_face)
-#         bot_location = 25
-#         time.sleep(0.05)
-#         command_xbee(command_dict['open-front-jaws'])
-#         max_count, travesable_nodes = process_image(20, cap)
-#         command_xbee(command_dict['close-front-jaws'])
-
-# print travesable_nodes
-
 max_count, travesable_nodes = process_image(20, cap)
 
 total_matched_markers = len(matches)
@@ -3540,18 +3494,6 @@ img_raw = get_image(cap)
 ret, img, pts = get_boundary_img(img_raw)
 write_result(matches, door_area_list, object_list, obstacle_list, img)
 cv2.imshow('result', img)
-
-# while True:
-#     print get_pos_orientation(cap)[3]
-# print matches
-# print object_list
-# print door_area_list
-#
-# t1 = time.clock()
-# print get_pos_orientation(cap)
-# t2 = time.clock()
-# print t2 -t1
-# breakpoint()
 
 cv2.destroyAllWindows()
 
