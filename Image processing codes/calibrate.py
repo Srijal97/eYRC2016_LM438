@@ -7,7 +7,9 @@ import math
 * Authors: Srijal Poojari
 * Filename: calibrate.py
 * Theme: eYRC-Launch a Module, 2016
-* Description:
+* Description: This program provides sliders to calibrate colour and threshold values
+*              for values used in the main program. The calibrated values are stored in
+*              the text file 'values.txt' and are loaded up by the main program.
 '''
 
 
@@ -119,14 +121,9 @@ def get_boundary_img(src_img, thresh_mode, blur_val, lower_thresh, upper_thresh,
         img_thresh = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,
                                            block_size, C_val)
 
-    # cv2.imshow('thresh', img_thresh)
-    # breakpoint()
 
     contours, hierarchy = cv2.findContours(img_thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     ''' hierarchy = [[[NextContour, PrevContour, FirstChild, Parent]]] '''
-
-    # cv2.drawContours(src_img, contours, -1, (255, 255, 0), 2)
-    # cv2.imshow('source', src_img)
 
     # For all contours with perimeter > 1000, take the lowest. This would be the inner boundary of arena.
     perimeter_list = []
@@ -141,9 +138,6 @@ def get_boundary_img(src_img, thresh_mode, blur_val, lower_thresh, upper_thresh,
     perimeter_list.sort()
     boundary_cnt = perimeter_list[0][1]
 
-    # print perimeter_list
-    # print boundary_cnt
-
     # Draw bounding rectangle for this inner boundary.
     rect = cv2.minAreaRect(contours[boundary_cnt])
     box = list(cv2.cv.BoxPoints(rect))
@@ -155,24 +149,14 @@ def get_boundary_img(src_img, thresh_mode, blur_val, lower_thresh, upper_thresh,
 
     box_pts = get_cw_points(box_pts)  # convert in clockwise order
 
-    # print "bounding rectangle points: " + str(box_pts)
-    # box = np.int32(box)
-    # img = cv2.drawContours(img, [box], 0, (0, 0, 255), 2)
-
     # Get 4 corner points for boundary contour and arrange in clockwise order
     epsilon = 0.01 * cv2.arcLength(contours[boundary_cnt], True)
     approx = cv2.approxPolyDP(contours[boundary_cnt], epsilon, True)
-
-    # cv2.drawContours(src_img, approx, -1, (255, 255, 0), 2)
 
     approx_pts_list = []
     final_pts_list = []
     for pt in approx:
         approx_pts_list.append(list(pt[0])) # store points as a list, not tuple.
-
-    # print "approx polydp points: " + str(approx_pts_list)
-    # pts_list = get_cw_points(pts_list)
-    # print "approx polydp points: " + str(pts_list)
 
     '''
      Now we have 2 points' lists: approxPolyDP points and boundingRect points
@@ -348,14 +332,7 @@ while not cv2.waitKey(1) & 0xFF == ord('q'):
     ret, img_thresh = cv2.threshold(img_gray, lower_thresh_bgrnd, 255, cv2.THRESH_BINARY_INV)
 
     img_thresh = cv2.medianBlur(img_thresh, blur_val_bgrnd)
-
-    # img_thresh = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 9, 5)
-    # cv2.imshow('thresh', img_thresh)
-
     res = cv2.bitwise_and(src_img, src_img, mask=img_thresh)
-
-    # cv2.imshow('res', res)
-
     hsv = cv2.cvtColor(src_img, cv2.COLOR_BGR2HSV)
 
     lower_white = np.array([0, sat_min, 0])
