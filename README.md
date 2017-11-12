@@ -8,7 +8,8 @@ The computer is running a python program which constantly processes frames from 
 
 We have also designed a modified system which could carry 3 objects at a time, but because of some software issues found right before the finals, we ended up not using it for the final round. 
 
-Huge thanks to e-yantra for conducting this competition every year and providing all the resources free of cost! [http://e-yantra.org/](http://e-yantra.org/)
+Huge thanks to e-yantra for conducting this competition every year and providing all the resources free of cost! <br>
+[http://e-yantra.org/](http://e-yantra.org/)
 
 ## Video Demonstration
 [Pre Finals Demonstration Video](https://www.youtube.com/watch?v=5FSh1IrSGKg)
